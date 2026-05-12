@@ -1,37 +1,5 @@
 import { useState, useEffect } from "react";
 
-const SUPABASE_URL = "https://nwmqmwnwyfwrxqblamay.supabase.co";
-const SUPABASE_KEY = "sb_publishable_L9npWi9ejapJ-07Y7slMtw_FrdEvpmX";
-
-async function sb(path, options = {}) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: {
-      "apikey": SUPABASE_KEY,
-      "Authorization": `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-      "Prefer": options.prefer || "return=representation",
-      ...options.headers
-    },
-    ...options
-  });
-  if (!res.ok && res.status !== 204) {
-    const err = await res.text();
-    console.error("Supabase error:", err);
-    return null;
-  }
-  if (res.status === 204) return true;
-  return res.json();
-}
-
-const getVacs = () => sb("vacantes?order=fecha.desc");
-const getCands = () => sb("candidatos?order=id.desc");
-const upsertVac = (v) => sb("vacantes", { method: "POST", prefer: "resolution=merge-duplicates,return=representation", body: JSON.stringify(v) });
-const upsertCand = (c) => sb("candidatos", { method: "POST", prefer: "resolution=merge-duplicates,return=representation", body: JSON.stringify(c) });
-const deleteVac = (id) => sb(`vacantes?id=eq.${id}`, { method: "DELETE", prefer: "" });
-const deleteCand = (id) => sb(`candidatos?id=eq.${id}`, { method: "DELETE", prefer: "" });
-const updateCand = (id, data) => sb(`candidatos?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(data) });
-const updateVac = (id, data) => sb(`vacantes?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(data) });
-
 const ESTADOS = [
   { id: "enviada", label: "Aplicación enviada", color: "#185FA5", bg: "#E6F1FB" },
   { id: "revision", label: "Hoja de vida en revisión", color: "#185FA5", bg: "#E6F1FB" },
@@ -59,6 +27,29 @@ const TIPOS_P = [
   { id: "archivo", label: "Carga de archivo" },
 ];
 
+const VACS_INIT = [
+  { id: "v1", titulo: "Analista de Recursos Humanos", area: "Recursos Humanos", ciudad: "Barranquilla", tipo: "Tiempo completo", descripcion: "Buscamos profesional con experiencia en selección y gestión del talento.", requisitos: "2 años de experiencia, manejo de herramientas ofimáticas.", publicada: true, fecha: "2025-05-01T08:00:00",
+    preguntas: [
+      { id: "p1", tipo: "texto", pregunta: "¿Cuántos años de experiencia tienes en selección de personal?", requerida: true, opciones: [] },
+      { id: "p2", tipo: "multiple", pregunta: "¿En qué sector has trabajado principalmente?", requerida: true, opciones: ["Servicios","Manufactura","Salud","Educación","Otro"] },
+      { id: "p3", tipo: "sino", pregunta: "¿Tienes experiencia con software ATS?", requerida: false, opciones: [] },
+      { id: "p4", tipo: "escala", pregunta: "Del 1 al 5, ¿cómo calificarías tu manejo de Excel?", requerida: true, opciones: [] },
+    ]
+  },
+];
+
+const CANDS_INIT = [
+  { id: "c1", nombre: "María Rodríguez", cedula: "1234567890", vacanteId: "v1", vacanteTitulo: "Analista de Recursos Humanos",
+    datosBásicos: { telefono: "3001234567", email: "maria@demo.com", ciudad: "Barranquilla", profesion: "Psicóloga", experiencia: "3 años", nivelEstudios: "Universitario" },
+    respuestas: { p1: "3 años en selección masiva", p2: "Servicios", p3: "si", p4: 4 },
+    historial: [
+      { estado: "enviada", fecha: "2025-05-05T09:00:00", nota: "Aplicación recibida exitosamente." },
+      { estado: "revision", fecha: "2025-05-06T14:00:00", nota: "Tu hoja de vida está siendo evaluada." },
+      { estado: "preseleccionado", fecha: "2025-05-08T10:00:00", nota: "¡Tu perfil ha sido preseleccionado!" },
+    ]
+  },
+];
+
 function fmt(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -71,6 +62,8 @@ function uid() { return "id" + Date.now() + Math.random().toString(36).slice(2,6
 const s = {
   page: { fontFamily: "system-ui,sans-serif", background: "#f7f8fa", minHeight: "100vh" },
   bar: { background: "#fff", borderBottom: "0.5px solid #e8e8e8", padding: "0 1.5rem", height: 52, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10 },
+  logo: { fontWeight: 700, fontSize: 17, color: "#1a1a1a" },
+  logoB: { color: "#185FA5" },
   body: { maxWidth: 800, margin: "0 auto", padding: "1.75rem 1.25rem" },
   card: { background: "#fff", border: "0.5px solid #e8e8e8", borderRadius: 12, padding: "1.25rem 1.4rem", marginBottom: 12 },
   lbl: { fontSize: 11, fontWeight: 600, color: "#aaa", letterSpacing: 0.5, textTransform: "uppercase", display: "block", marginBottom: 5 },
@@ -83,6 +76,7 @@ const s = {
   btnD: { background: "transparent", color: "#A32D2D", border: "0.5px solid #f0a0a0", borderRadius: 8, padding: "7px 12px", fontSize: 12, cursor: "pointer" },
   badge: (e) => ({ display: "inline-block", background: e.bg, color: e.color, borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 500 }),
   err: { background: "#FCEBEB", color: "#A32D2D", borderRadius: 8, padding: "9px 13px", fontSize: 13, marginBottom: 10 },
+  ok: { background: "#E1F5EE", color: "#0F6E56", borderRadius: 8, padding: "9px 13px", fontSize: 13, marginBottom: 10 },
   g2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
   av: { width: 38, height: 38, borderRadius: "50%", background: "#E6F1FB", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: 13, color: "#185FA5", flexShrink: 0 },
   dot: (on) => ({ width: 10, height: 10, borderRadius: "50%", background: on ? "#185FA5" : "#e0e0e0", border: on ? "2px solid #B5D4F4" : "2px solid #eee", flexShrink: 0, marginTop: 3 }),
@@ -91,21 +85,26 @@ const s = {
 };
 
 export default function App() {
+  // scr: "inicio" | "aplicar" | "confirmacion" | "acceso" | "portal" | "admin"
   const [scr, setScr] = useState("inicio");
-  const [vacs, setVacs] = useState([]);
-  const [cands, setCands] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [vacs, setVacs] = useState(VACS_INIT);
+  const [cands, setCands] = useState(CANDS_INIT);
   const [candActivo, setCandActivo] = useState(null);
 
+  // aplicar
   const [apVac, setApVac] = useState(null);
   const [apPaso, setApPaso] = useState(1);
   const [apNombre, setApNombre] = useState(""); const [apCedula, setApCedula] = useState(""); const [apTel, setApTel] = useState(""); const [apEmail, setApEmail] = useState(""); const [apCiudad, setApCiudad] = useState(""); const [apProf, setApProf] = useState(""); const [apExp, setApExp] = useState(""); const [apEst, setApEst] = useState("Universitario");
   const [apResp, setApResp] = useState({});
   const [apErr, setApErr] = useState("");
 
+  // acceso candidato
   const [accCedula, setAccCedula] = useState(""); const [accErr, setAccErr] = useState("");
+
+  // admin login
   const [adminPass, setAdminPass] = useState(""); const [adminErr, setAdminErr] = useState(""); const [showAdminLogin, setShowAdminLogin] = useState(false);
 
+  // admin
   const [aTab, setATab] = useState("vacantes");
   const [aVacMode, setAVacMode] = useState("lista"); const [aVacSel, setAVacSel] = useState(null);
   const [aCandSel, setACandSel] = useState(null); const [aFiltro, setAFiltro] = useState("todas");
@@ -115,50 +114,58 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      setLoading(true);
-      const [v, c] = await Promise.all([getVacs(), getCands()]);
-      if (v) setVacs(v);
-      if (c) setCands(c);
-      setLoading(false);
+      try { const r = await window.storage.get("ats4_c"); if (r) setCands(JSON.parse(r.value)); } catch {}
+      try { const r = await window.storage.get("ats4_v"); if (r) setVacs(JSON.parse(r.value)); } catch {}
     })();
   }, []);
 
-  const refreshData = async () => {
-    const [v, c] = await Promise.all([getVacs(), getCands()]);
-    if (v) setVacs(v);
-    if (c) setCands(c);
-  };
+  const savC = async (l) => { setCands(l); try { await window.storage.set("ats4_c", JSON.stringify(l)); } catch {} };
+  const savV = async (l) => { setVacs(l); try { await window.storage.set("ats4_v", JSON.stringify(l)); } catch {} };
 
-  const doAcceso = async () => {
+  // Acceso candidato: solo cédula
+  const doAcceso = () => {
     setAccErr("");
     const found = cands.find(x => x.cedula === accCedula.trim());
     if (!found) { setAccErr("No encontramos una aplicación con esa cédula. Primero debes aplicar a una vacante."); return; }
     setCandActivo(found); setScr("portal");
   };
 
+  // Admin login
   const doAdminLogin = () => {
     if (adminPass === "Josedavid.15") { setShowAdminLogin(false); setAdminPass(""); setAdminErr(""); setScr("admin"); }
     else setAdminErr("Contraseña incorrecta.");
   };
 
+  // Aplicar
   const analizarConIA = async (candidato, vac) => {
-    const pregs = (vac.preguntas || []).map((p, i) => {
+    const preguntasTexto = (vac.preguntas || []).map((p, i) => {
       const r = candidato.respuestas?.[p.id];
       const rv = r === undefined ? "Sin respuesta" : (p.tipo === "sino" ? (r === "si" ? "Sí" : "No") : (p.tipo === "escala" ? `${r}/5` : r));
       return `${i+1}. ${p.pregunta}: ${rv}`;
     }).join("\n");
-    const db = candidato.datos_basicos || {};
+    const db = candidato.datosBásicos;
     const prompt = `Eres un experto en selección de talento humano. Analiza este candidato para la vacante y devuelve SOLO un JSON válido sin explicaciones ni markdown.
 
-VACANTE: ${vac.titulo} | ${vac.area} | ${vac.ciudad} | ${vac.tipo}
-Descripción: ${vac.descripcion || "No especificada"}
-Requisitos: ${vac.requisitos || "No especificados"}
+VACANTE:
+- Título: ${vac.titulo}
+- Área: ${vac.area}
+- Ciudad: ${vac.ciudad}
+- Tipo: ${vac.tipo}
+- Descripción: ${vac.descripcion || "No especificada"}
+- Requisitos: ${vac.requisitos || "No especificados"}
 
-CANDIDATO: ${candidato.nombre} | ${db.profesion} | ${db.experiencia} | ${db.nivel_estudios} | ${db.ciudad}
+CANDIDATO:
+- Nombre: ${candidato.nombre}
+- Profesión: ${db.profesion}
+- Experiencia: ${db.experiencia}
+- Estudios: ${db.nivelEstudios}
+- Ciudad: ${db.ciudad}
 
-RESPUESTAS: ${pregs || "Sin preguntas"}
+RESPUESTAS AL FORMULARIO:
+${preguntasTexto || "Sin preguntas adicionales"}
 
-JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a favor>","debilidades":"<puntos de mejora>","recomendacion":"contratar"|"considerar"|"no_contratar","justificacion":"<1 oración>"}`;
+Responde SOLO con este JSON exacto:
+{"porcentaje": <número 0-100>, "resumen": "<2-3 oraciones sobre el perfil>", "fortalezas": "<principales puntos a favor>", "debilidades": "<puntos de mejora o riesgos>", "recomendacion": "contratar" | "considerar" | "no_contratar", "justificacion": "<1 oración explicando la recomendación>"}`;
 
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -168,46 +175,33 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
       });
       const data = await res.json();
       const text = data.content?.[0]?.text || "";
-      return JSON.parse(text.replace(/```json|```/g, "").trim());
+      const clean = text.replace(/```json|```/g, "").trim();
+      return JSON.parse(clean);
     } catch { return null; }
   };
 
   const doAplicar = async () => {
     setApErr("");
     if (!apNombre || !apCedula || !apTel || !apCiudad || !apProf || !apExp) { setApErr("Completa todos los campos obligatorios (*)"); return; }
-    if (cands.find(x => x.cedula === apCedula && x.vacante_id === apVac.id)) { setApErr("Ya aplicaste a esta vacante anteriormente."); return; }
-    const pregs = apVac.preguntas || [];
-    for (const p of pregs.filter(p => p.requerida)) {
+    if (cands.find(x => x.cedula === apCedula && x.vacanteId === apVac.id)) { setApErr("Ya aplicaste a esta vacante anteriormente."); return; }
+    const vac = apVac;
+    const pregs = vac.preguntas || [];
+    const reqs = pregs.filter(p => p.requerida);
+    for (const p of reqs) {
       if (apResp[p.id] === undefined || apResp[p.id] === null || apResp[p.id] === "") { setApErr("Responde todas las preguntas obligatorias (*)."); return; }
     }
-    const nuevo = {
-      id: "c" + Date.now(),
-      nombre: apNombre, cedula: apCedula,
-      vacante_id: apVac.id, vacante_titulo: apVac.titulo,
-      datos_basicos: { telefono: apTel, email: apEmail, ciudad: apCiudad, profesion: apProf, experiencia: apExp, nivel_estudios: apEst },
-      respuestas: apResp, analisis_ia: null, analizando: true,
-      historial: [{ estado: "enviada", fecha: new Date().toISOString(), nota: "Aplicación recibida exitosamente." }]
-    };
-    const res = await upsertCand(nuevo);
-    if (!res) { setApErr("Error al guardar. Intenta de nuevo."); return; }
-    const candGuardado = Array.isArray(res) ? res[0] : res;
-    setCandActivo(candGuardado);
-    setCands(prev => [...prev, candGuardado]);
-    setScr("confirmacion");
-    const analisis = await analizarConIA(nuevo, apVac);
-    await updateCand(nuevo.id, { analisis_ia: analisis, analizando: false });
-    setCands(prev => prev.map(x => x.id === nuevo.id ? { ...x, analisis_ia: analisis, analizando: false } : x));
-    setApVac(null);
+    const nuevo = { id: "c" + Date.now(), nombre: apNombre, cedula: apCedula, vacanteId: vac.id, vacanteTitulo: vac.titulo, datosBásicos: { telefono: apTel, email: apEmail, ciudad: apCiudad, profesion: apProf, experiencia: apExp, nivelEstudios: apEst }, respuestas: apResp, analisisIA: null, analizando: true, historial: [{ estado: "enviada", fecha: new Date().toISOString(), nota: "Aplicación recibida exitosamente." }] };
+    const list = [...cands, nuevo]; savC(list);
+    setCandActivo(nuevo); setScr("confirmacion");
+    const analisis = await analizarConIA(nuevo, vac);
+    const listUpd = list.map(x => x.id === nuevo.id ? { ...x, analisisIA: analisis, analizando: false } : x);
+    savC(listUpd);
   };
 
-  const doCambiarEstado = async () => {
+  const doCambiarEstado = () => {
     if (!aEstado || !aCandSel) return;
-    const nuevoHistorial = [...(aCandSel.historial || []), { estado: aEstado, fecha: new Date().toISOString(), nota: aNota || getE(aEstado).label }];
-    await updateCand(aCandSel.id, { historial: nuevoHistorial });
-    const updated = { ...aCandSel, historial: nuevoHistorial };
-    setACandSel(updated);
-    setCands(prev => prev.map(x => x.id === aCandSel.id ? updated : x));
-    setAEstado(""); setANota("");
+    const updated = cands.map(x => x.id !== aCandSel.id ? x : { ...x, historial: [...x.historial, { estado: aEstado, fecha: new Date().toISOString(), nota: aNota || getE(aEstado).label }] });
+    savC(updated); setACandSel(updated.find(x => x.id === aCandSel.id)); setAEstado(""); setANota("");
   };
 
   const doAgregarPregunta = () => {
@@ -219,16 +213,12 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
     setPTexto(""); setPOps(""); setPReq(false); setPTipo("texto"); setPErr("");
   };
 
-  const doGuardarVac = async () => {
+  const doGuardarVac = () => {
     if (!nvT || !nvA || !nvC) { setNvErr("Completa título, área y ciudad."); return; }
-    const vacData = { titulo: nvT, area: nvA, ciudad: nvC, tipo: nvTipo, descripcion: nvD, requisitos: nvR, preguntas: nvPreguntas, publicada: true };
     if (aVacMode === "editar" && aVacSel) {
-      await updateVac(aVacSel.id, vacData);
-      setVacs(prev => prev.map(v => v.id === aVacSel.id ? { ...v, ...vacData } : v));
+      savV(vacs.map(v => v.id === aVacSel.id ? { ...v, titulo: nvT, area: nvA, ciudad: nvC, tipo: nvTipo, descripcion: nvD, requisitos: nvR, preguntas: nvPreguntas } : v));
     } else {
-      const nueva = { id: "v" + Date.now(), ...vacData, fecha: new Date().toISOString() };
-      const res = await upsertVac(nueva);
-      if (res) setVacs(prev => [...prev, Array.isArray(res) ? res[0] : res]);
+      savV([...vacs, { id: "v" + Date.now(), titulo: nvT, area: nvA, ciudad: nvC, tipo: nvTipo, descripcion: nvD, requisitos: nvR, publicada: true, fecha: new Date().toISOString(), preguntas: nvPreguntas }]);
     }
     setAVacMode("lista"); setAVacSel(null); setNvT(""); setNvA(""); setNvC(""); setNvTipo("Tiempo completo"); setNvD(""); setNvR(""); setNvPreguntas([]); setNvErr("");
   };
@@ -286,16 +276,7 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
     </div>
   );
 
-  if (loading) return (
-    <div style={{ ...s.page, display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
-      <div style={{ textAlign: "center" }}>
-        <div style={{ width: 32, height: 32, border: "3px solid #185FA5", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        <p style={{ color: "#aaa", fontSize: 14 }}>Cargando portal...</p>
-      </div>
-    </div>
-  );
-
+  // ── INICIO — VACANTES PÚBLICAS ──
   if (scr === "inicio") {
     const pub = vacs.filter(v => v.publicada);
     return (
@@ -304,6 +285,8 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
           <button style={s.btnG} onClick={() => setScr("acceso")}>Ver mi proceso</button>
           <button style={{ ...s.btnG, fontSize: 12 }} onClick={() => setShowAdminLogin(true)}>Admin</button>
         </Bar>
+
+        {/* Modal admin login */}
         {showAdminLogin && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
             <div style={{ background: "#fff", borderRadius: 14, padding: "1.75rem", width: 320 }}>
@@ -318,10 +301,11 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
             </div>
           </div>
         )}
+
         <div style={s.body}>
           <div style={{ marginBottom: 28 }}>
             <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>Oportunidades de empleo</h2>
-            <p style={{ color: "#aaa", fontSize: 14, margin: 0 }}>{pub.length} vacante{pub.length !== 1 ? "s" : ""} disponible{pub.length !== 1 ? "s" : ""}.</p>
+            <p style={{ color: "#aaa", fontSize: 14, margin: 0 }}>{pub.length} vacante{pub.length !== 1 ? "s" : ""} disponible{pub.length !== 1 ? "s" : ""}. Aplica directamente desde aquí.</p>
           </div>
           {pub.length === 0 && <div style={{ ...s.card, textAlign: "center", color: "#bbb", padding: "3rem" }}>No hay vacantes publicadas en este momento.</div>}
           {pub.map(v => (
@@ -334,14 +318,19 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
                   {v.requisitos && <p style={{ fontSize: 12, color: "#aaa", margin: 0 }}><strong>Requisitos:</strong> {v.requisitos}</p>}
                   {v.preguntas && v.preguntas.length > 0 && <p style={{ fontSize: 12, color: "#378ADD", margin: "6px 0 0" }}>📋 {v.preguntas.length} preguntas en el formulario</p>}
                 </div>
-                <button style={s.btn} onClick={() => { setApVac(v); setApPaso(1); setApNombre(""); setApCedula(""); setApTel(""); setApEmail(""); setApCiudad(""); setApProf(""); setApExp(""); setApEst("Universitario"); setApResp({}); setApErr(""); setScr("aplicar"); }}>Aplicar</button>
+                <button style={s.btn} onClick={() => {
+                  setApVac(v); setApPaso(1);
+                  setApNombre(""); setApCedula(""); setApTel(""); setApEmail(""); setApCiudad(""); setApProf(""); setApExp(""); setApEst("Universitario");
+                  setApResp({}); setApErr(""); setScr("aplicar");
+                }}>Aplicar</button>
               </div>
             </div>
           ))}
+
           <div style={{ marginTop: 24, padding: "16px 20px", background: "#f0f5ff", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <div>
               <p style={{ fontSize: 14, fontWeight: 600, margin: "0 0 2px", color: "#185FA5" }}>¿Ya aplicaste?</p>
-              <p style={{ fontSize: 13, color: "#378ADD", margin: 0 }}>Ingresa con tu cédula para ver tu proceso.</p>
+              <p style={{ fontSize: 13, color: "#378ADD", margin: 0 }}>Ingresa con tu cédula para ver el estado de tu proceso.</p>
             </div>
             <button style={s.btn} onClick={() => setScr("acceso")}>Ver mi proceso</button>
           </div>
@@ -350,6 +339,7 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
     );
   }
 
+  // ── APLICAR (2 pasos) ──
   if (scr === "aplicar" && apVac) {
     const preguntas = apVac.preguntas || [];
     return (
@@ -361,6 +351,8 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
               <div style={{ fontWeight: 600, fontSize: 14, color: "#185FA5" }}>{apVac.titulo}</div>
               <div style={{ fontSize: 12, color: "#378ADD" }}>{apVac.area} · {apVac.ciudad} · {apVac.tipo}</div>
             </div>
+
+            {/* Pasos */}
             {preguntas.length > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 22 }}>
                 <div style={s.step(apPaso >= 1)}>1</div>
@@ -370,34 +362,46 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
                 <span style={{ fontSize: 13, color: apPaso===2?"#185FA5":"#bbb", fontWeight: apPaso===2?600:400 }}>Preguntas del cargo</span>
               </div>
             )}
+
+            {/* PASO 1 */}
             {apPaso === 1 && (
               <div style={s.card}>
                 <p style={{ fontWeight: 600, fontSize: 15, margin: "0 0 16px" }}>Tus datos personales</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
                   <div><label style={s.lbl}>Nombre completo *</label><input style={s.inp} value={apNombre} onChange={e=>setApNombre(e.target.value)} placeholder="Tu nombre completo" /></div>
                   <div style={s.g2}>
-                    <div><label style={s.lbl}>Cédula *</label><input style={s.inp} value={apCedula} onChange={e=>setApCedula(e.target.value)} placeholder="Ej: 1234567890" /></div>
+                    <div><label style={s.lbl}>Número de cédula *</label><input style={s.inp} value={apCedula} onChange={e=>setApCedula(e.target.value)} placeholder="Ej: 1234567890" /></div>
                     <div><label style={s.lbl}>Teléfono *</label><input style={s.inp} value={apTel} onChange={e=>setApTel(e.target.value)} placeholder="3001234567" /></div>
                   </div>
                   <div style={s.g2}>
-                    <div><label style={s.lbl}>Correo</label><input style={s.inp} type="email" value={apEmail} onChange={e=>setApEmail(e.target.value)} placeholder="tucorreo@email.com" /></div>
-                    <div><label style={s.lbl}>Ciudad *</label><input style={s.inp} value={apCiudad} onChange={e=>setApCiudad(e.target.value)} placeholder="Tu ciudad" /></div>
+                    <div><label style={s.lbl}>Correo electrónico</label><input style={s.inp} type="email" value={apEmail} onChange={e=>setApEmail(e.target.value)} placeholder="tucorreo@email.com" /></div>
+                    <div><label style={s.lbl}>Ciudad de residencia *</label><input style={s.inp} value={apCiudad} onChange={e=>setApCiudad(e.target.value)} placeholder="Tu ciudad" /></div>
                   </div>
                   <div style={s.g2}>
-                    <div><label style={s.lbl}>Profesión *</label><input style={s.inp} value={apProf} onChange={e=>setApProf(e.target.value)} placeholder="Ej: Psicóloga" /></div>
-                    <div><label style={s.lbl}>Experiencia *</label><input style={s.inp} value={apExp} onChange={e=>setApExp(e.target.value)} placeholder="Ej: 3 años" /></div>
+                    <div><label style={s.lbl}>Profesión / Título *</label><input style={s.inp} value={apProf} onChange={e=>setApProf(e.target.value)} placeholder="Ej: Psicóloga" /></div>
+                    <div><label style={s.lbl}>Años de experiencia *</label><input style={s.inp} value={apExp} onChange={e=>setApExp(e.target.value)} placeholder="Ej: 3 años" /></div>
                   </div>
                   <div><label style={s.lbl}>Nivel de estudios</label>
                     <select style={s.sel} value={apEst} onChange={e=>setApEst(e.target.value)}>
                       {["Bachiller","Técnico","Tecnólogo","Universitario","Posgrado","Maestría","Doctorado"].map(n=><option key={n}>{n}</option>)}
                     </select>
                   </div>
-                  <div><label style={s.lbl}>Hoja de vida (PDF o Word)</label><div style={{ border: "0.5px dashed #ccc", borderRadius: 8, padding: 14, textAlign: "center", color: "#bbb", fontSize: 13, cursor: "pointer" }}>Haz clic para adjuntar tu CV</div></div>
+                  <div>
+                    <label style={s.lbl}>Hoja de vida (PDF o Word)</label>
+                    <div style={{ border: "0.5px dashed #ccc", borderRadius: 8, padding: 14, textAlign: "center", color: "#bbb", fontSize: 13, cursor: "pointer" }}>Haz clic para adjuntar tu CV</div>
+                  </div>
                   {apErr && <div style={s.err}>{apErr}</div>}
-                  <button style={{ ...s.btn, width: "100%" }} onClick={() => { if (!apNombre || !apCedula || !apTel || !apCiudad || !apProf || !apExp) { setApErr("Completa los campos obligatorios (*)"); return; } setApErr(""); if (preguntas.length === 0) doAplicar(); else setApPaso(2); }}>{preguntas.length === 0 ? "Enviar aplicación" : "Continuar →"}</button>
+                  <button style={{ ...s.btn, width: "100%" }} onClick={() => {
+                    if (!apNombre || !apCedula || !apTel || !apCiudad || !apProf || !apExp) { setApErr("Completa los campos obligatorios (*)"); return; }
+                    setApErr("");
+                    if (preguntas.length === 0) doAplicar();
+                    else setApPaso(2);
+                  }}>{preguntas.length === 0 ? "Enviar aplicación" : "Continuar →"}</button>
                 </div>
               </div>
             )}
+
+            {/* PASO 2 */}
             {apPaso === 2 && (
               <div style={s.card}>
                 <p style={{ fontWeight: 600, fontSize: 15, margin: "0 0 4px" }}>Preguntas del cargo</p>
@@ -426,6 +430,7 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
     );
   }
 
+  // ── CONFIRMACIÓN ──
   if (scr === "confirmacion" && candActivo) return (
     <div style={s.page}>
       <Bar />
@@ -433,32 +438,37 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
         <div style={{ width: "100%", maxWidth: 460, textAlign: "center" }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
           <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>¡Aplicación enviada!</h2>
-          <p style={{ color: "#666", fontSize: 14, marginBottom: 28, lineHeight: 1.7 }}>Tu aplicación para <strong>{candActivo.vacante_titulo}</strong> fue recibida exitosamente.</p>
+          <p style={{ color: "#666", fontSize: 14, marginBottom: 28, lineHeight: 1.7 }}>
+            Tu aplicación para <strong>{candActivo.vacanteTitulo}</strong> fue recibida exitosamente.<br />
+            Estaremos en contacto contigo pronto.
+          </p>
           <div style={{ background: "#E6F1FB", borderRadius: 12, padding: "16px 20px", marginBottom: 24 }}>
             <p style={{ fontSize: 13, color: "#185FA5", margin: "0 0 4px", fontWeight: 600 }}>¿Cómo consultar tu estado?</p>
-            <p style={{ fontSize: 13, color: "#378ADD", margin: 0 }}>Haz clic en <strong>"Ver mi proceso"</strong> e ingresa tu cédula: <strong>{candActivo.cedula}</strong></p>
+            <p style={{ fontSize: 13, color: "#378ADD", margin: 0 }}>Vuelve a esta página y haz clic en <strong>"Ver mi proceso"</strong>. Solo necesitas tu número de cédula: <strong>{candActivo.cedula}</strong></p>
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
             <button style={s.btnG} onClick={() => setScr("inicio")}>Ver más vacantes</button>
-            <button style={s.btn} onClick={() => setScr("portal")}>Ver mi proceso ahora</button>
+            <button style={s.btn} onClick={() => { setCandActivo(candActivo); setScr("portal"); }}>Ver mi proceso ahora</button>
           </div>
         </div>
       </div>
     </div>
   );
 
+  // ── ACCESO CANDIDATO ──
   if (scr === "acceso") return (
     <div style={s.page}>
       <Bar><button style={s.btnG} onClick={() => setScr("inicio")}>← Vacantes</button></Bar>
       <div style={{ display: "flex", justifyContent: "center", padding: "3rem 1rem" }}>
         <div style={{ width: "100%", maxWidth: 360 }}>
           <h2 style={{ fontSize: 21, fontWeight: 700, marginBottom: 4 }}>Ver mi proceso</h2>
-          <p style={{ color: "#aaa", fontSize: 14, marginBottom: 24 }}>Ingresa tu cédula para consultar el estado de tu aplicación.</p>
+          <p style={{ color: "#aaa", fontSize: 14, marginBottom: 24 }}>Ingresa tu número de cédula para ver el estado de tu aplicación.</p>
           <div style={s.card}>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div><label style={s.lbl}>Número de cédula</label><input style={s.inp} value={accCedula} onChange={e=>setAccCedula(e.target.value)} placeholder="Ej: 1234567890" onKeyDown={e=>e.key==="Enter"&&doAcceso()} autoFocus /></div>
               {accErr && <div style={s.err}>{accErr}</div>}
               <button style={{ ...s.btn, width: "100%" }} onClick={doAcceso}>Consultar</button>
+              <p style={{ textAlign: "center", fontSize: 12, color: "#ccc", margin: 0 }}>Prueba con cédula: 1234567890</p>
             </div>
           </div>
         </div>
@@ -466,22 +476,28 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
     </div>
   );
 
+  // ── PORTAL CANDIDATO ──
   if (scr === "portal" && candActivo) {
     const u = cands.find(x => x.id === candActivo.id) || candActivo;
-    const ea = u.historial && u.historial.length ? getE(u.historial[u.historial.length-1].estado) : null;
-    const hist = u.historial ? [...u.historial].reverse() : [];
+    const ea = u.historial.length ? getE(u.historial[u.historial.length-1].estado) : null;
+    const hist = [...u.historial].reverse();
     return (
       <div style={s.page}>
-        <Bar><button style={s.btnG} onClick={() => { setCandActivo(null); setScr("inicio"); }}>Salir</button></Bar>
+        <Bar>
+          <button style={s.btnG} onClick={() => { setCandActivo(null); setScr("inicio"); }}>Salir</button>
+        </Bar>
         <div style={s.body}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
             <div style={s.av}>{ini(u.nombre)}</div>
-            <div><h2 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>Hola, {u.nombre.split(" ")[0]}</h2><p style={{ color: "#aaa", fontSize: 13, margin: 0 }}>Cédula: {u.cedula}</p></div>
+            <div>
+              <h2 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>Hola, {u.nombre.split(" ")[0]}</h2>
+              <p style={{ color: "#aaa", fontSize: 13, margin: 0 }}>Cédula: {u.cedula}</p>
+            </div>
           </div>
           {ea && (
             <div style={{ ...s.card, borderLeft: `3px solid ${ea.color}`, marginBottom: 14 }}>
               <div style={s.lbl}>Proceso activo</div>
-              <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 8 }}>{u.vacante_titulo}</div>
+              <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 8 }}>{u.vacanteTitulo}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span style={s.badge(ea)}>{ea.label}</span>
                 <span style={{ fontSize: 12, color: "#bbb" }}>{fmt(u.historial[u.historial.length-1].fecha)}</span>
@@ -490,7 +506,8 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
             </div>
           )}
           <div style={s.card}>
-            <div style={s.lbl}>Historial</div>
+            <div style={s.lbl}>Historial del proceso</div>
+            {hist.length === 0 && <p style={{ color: "#bbb", fontSize: 13 }}>Sin historial aún.</p>}
             {hist.map((h, i) => {
               const e = getE(h.estado);
               return (
@@ -511,19 +528,15 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
     );
   }
 
+  // ── ADMIN ──
   if (scr === "admin") {
     if (aCandSel) {
-      const vac = vacs.find(v => v.id === aCandSel.vacante_id);
-      const hist = aCandSel.historial ? [...aCandSel.historial].reverse() : [];
-      const db = aCandSel.datos_basicos || {};
-      const a = aCandSel.analisis_ia;
+      const vac = vacs.find(v => v.id === aCandSel.vacanteId);
+      const hist = [...aCandSel.historial].reverse();
+      const db = aCandSel.datosBásicos || {};
       return (
         <div style={s.page}>
-          <Bar>
-            <button style={s.btnG} onClick={() => setACandSel(null)}>← Candidatos</button>
-            <button style={s.btnD} onClick={async () => { if(window.confirm(`¿Eliminar a ${aCandSel.nombre}?`)) { await deleteCand(aCandSel.id); setCands(prev => prev.filter(c => c.id !== aCandSel.id)); setACandSel(null); } }}>Eliminar</button>
-            <button style={s.btnG} onClick={() => setScr("inicio")}>Salir</button>
-          </Bar>
+          <Bar><button style={s.btnG} onClick={() => setACandSel(null)}>← Candidatos</button><button style={s.btnD} onClick={() => { if(window.confirm(`¿Eliminar a ${aCandSel.nombre}?`)) { savC(cands.filter(c => c.id !== aCandSel.id)); setACandSel(null); } }}>Eliminar candidato</button><button style={s.btnG} onClick={() => setScr("inicio")}>Salir</button></Bar>
           <div style={s.body}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <div style={s.av}>{ini(aCandSel.nombre)}</div>
@@ -533,6 +546,7 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
                 {vac && <p style={{ color: "#185FA5", fontSize: 13, margin: "2px 0 0" }}>{vac.titulo}</p>}
               </div>
             </div>
+            {/* Análisis IA */}
             {aCandSel.analizando && (
               <div style={{ ...s.card, marginBottom: 12, display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ width: 20, height: 20, border: "2px solid #185FA5", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
@@ -540,33 +554,38 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
                 <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
               </div>
             )}
-            {a && (() => {
+            {aCandSel.analisisIA && (() => {
+              const a = aCandSel.analisisIA;
               const rec = { contratar: { label: "Recomendado para contratar", bg: "#E1F5EE", color: "#0F6E56" }, considerar: { label: "Considerar con reservas", bg: "#FAEEDA", color: "#854F0B" }, no_contratar: { label: "No recomendado", bg: "#FCEBEB", color: "#A32D2D" } }[a.recomendacion] || { label: a.recomendacion, bg: "#f0f0f0", color: "#888" };
               const pct = Math.min(100, Math.max(0, a.porcentaje));
               const barColor = pct >= 70 ? "#0F6E56" : pct >= 45 ? "#854F0B" : "#A32D2D";
               return (
                 <div style={{ ...s.card, marginBottom: 12, borderTop: `3px solid ${barColor}` }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <span style={s.lbl}>Análisis IA</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "#aaa", letterSpacing: 0.5, textTransform: "uppercase" }}>Análisis IA</span>
+                    </div>
                     <span style={{ background: rec.bg, color: rec.color, borderRadius: 20, padding: "4px 14px", fontSize: 12, fontWeight: 600 }}>{rec.label}</span>
                   </div>
+                  {/* Barra porcentaje */}
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                       <span style={{ fontSize: 13, color: "#666" }}>Compatibilidad con el perfil</span>
                       <span style={{ fontSize: 22, fontWeight: 700, color: barColor }}>{pct}%</span>
                     </div>
                     <div style={{ height: 8, background: "#f0f0f0", borderRadius: 10, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 10 }} />
+                      <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 10, transition: "width 0.6s ease" }} />
                     </div>
                   </div>
+                  {/* Resumen */}
                   <p style={{ fontSize: 13, color: "#555", lineHeight: 1.6, margin: "0 0 12px", padding: "10px 12px", background: "#f9f9f9", borderRadius: 8 }}>{a.resumen}</p>
                   <div style={s.g2}>
                     <div style={{ background: "#f0faf5", borderRadius: 8, padding: "10px 12px" }}>
-                      <p style={{ fontSize: 11, fontWeight: 600, color: "#0F6E56", margin: "0 0 4px", textTransform: "uppercase" }}>Fortalezas</p>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: "#0F6E56", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 0.4 }}>Fortalezas</p>
                       <p style={{ fontSize: 13, color: "#444", margin: 0, lineHeight: 1.5 }}>{a.fortalezas}</p>
                     </div>
                     <div style={{ background: "#fff8f0", borderRadius: 8, padding: "10px 12px" }}>
-                      <p style={{ fontSize: 11, fontWeight: 600, color: "#854F0B", margin: "0 0 4px", textTransform: "uppercase" }}>Por mejorar</p>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: "#854F0B", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 0.4 }}>Por mejorar</p>
                       <p style={{ fontSize: 13, color: "#444", margin: 0, lineHeight: 1.5 }}>{a.debilidades}</p>
                     </div>
                   </div>
@@ -578,7 +597,7 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
               <div style={{ ...s.card, marginBottom: 12 }}>
                 <div style={s.lbl}>Datos personales</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 20px" }}>
-                  {[["Teléfono",db.telefono],["Correo",db.email],["Ciudad",db.ciudad],["Profesión",db.profesion],["Experiencia",db.experiencia],["Estudios",db.nivel_estudios]].map(([k,v]) => v ? (
+                  {[["Teléfono",db.telefono],["Correo",db.email],["Ciudad",db.ciudad],["Profesión",db.profesion],["Experiencia",db.experiencia],["Estudios",db.nivelEstudios]].map(([k,v]) => v ? (
                     <div key={k}><span style={{ fontSize: 12, color: "#aaa" }}>{k}</span><p style={{ fontSize: 14, margin: "2px 0 0", fontWeight: 500 }}>{v}</p></div>
                   ) : null)}
                 </div>
@@ -630,16 +649,140 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
       );
     }
 
-    const filtrados = aFiltro === "todas" ? cands : cands.filter(x => x.vacante_id === aFiltro);
+    const filtrados = aFiltro === "todas" ? cands : cands.filter(x => x.vacanteId === aFiltro);
+
     return (
       <div style={s.page}>
-        <Bar><span style={{ fontSize: 13, color: "#aaa", fontWeight: 500 }}>Panel Admin</span><button style={s.btnG} onClick={() => { refreshData(); setScr("inicio"); }}>Salir</button></Bar>
+        <Bar><span style={{ fontSize: 13, color: "#aaa", fontWeight: 500 }}>Panel Admin</span><button style={s.btnG} onClick={() => setScr("inicio")}>Salir</button></Bar>
         <div style={s.body}>
           <div style={{ display: "flex", gap: 6, marginBottom: 22, background: "#f0f0f0", padding: 4, borderRadius: 10, width: "fit-content" }}>
-            {[["vacantes","Vacantes"],["candidatos","Candidatos"]].map(([t,l]) => (
+            {[["dashboard","Dashboard"],["vacantes","Vacantes"],["candidatos","Candidatos"]].map(([t,l]) => (
               <button key={t} style={s.tab(aTab===t)} onClick={() => setATab(t)}>{l}</button>
             ))}
           </div>
+
+          {aTab === "dashboard" && (() => {
+            const total = cands.length;
+            const conApp = cands.filter(x => x.vacante_id);
+            const porEstado = (id) => cands.filter(x => x.historial && x.historial.length && x.historial[x.historial.length-1].estado === id).length;
+            const preseleccionados = porEstado("preseleccionado");
+            const entrevistados = cands.filter(x => x.historial && x.historial.some(h => ["entrevista_agendada","entrevista_realizada","entrevista_cliente","entrevista_final"].includes(h.estado))).length;
+            const ofertas = cands.filter(x => x.historial && x.historial.some(h => ["oferta_enviada","oferta_aceptada"].includes(h.estado))).length;
+            const contratados = cands.filter(x => x.historial && x.historial.some(h => ["oferta_aceptada","examenes","contrato","fecha_inicio"].includes(h.estado))).length;
+            const noCumplen = porEstado("no_cumple");
+            const promedioIA = cands.filter(x => x.analisis_ia?.porcentaje).length > 0
+              ? Math.round(cands.filter(x => x.analisis_ia?.porcentaje).reduce((a, x) => a + x.analisis_ia.porcentaje, 0) / cands.filter(x => x.analisis_ia?.porcentaje).length)
+              : null;
+
+            const etapas = [
+              { label: "Aplicaciones", val: conApp.length, color: "#185FA5", bg: "#E6F1FB", icon: "📋" },
+              { label: "Preseleccionados", val: preseleccionados, color: "#0F6E56", bg: "#E1F5EE", icon: "✅" },
+              { label: "En entrevistas", val: entrevistados, color: "#534AB7", bg: "#EEEDFE", icon: "🗣️" },
+              { label: "Ofertas enviadas", val: ofertas, color: "#854F0B", bg: "#FAEEDA", icon: "📄" },
+              { label: "Contratados", val: contratados, color: "#0F6E56", bg: "#E1F5EE", icon: "🎉" },
+              { label: "No cumplen perfil", val: noCumplen, color: "#A32D2D", bg: "#FCEBEB", icon: "❌" },
+            ];
+
+            const porVacante = vacs.map(v => ({
+              titulo: v.titulo,
+              total: cands.filter(x => x.vacante_id === v.id).length,
+              presel: cands.filter(x => x.vacante_id === v.id && x.historial && x.historial.length && x.historial[x.historial.length-1].estado === "preseleccionado").length,
+            })).filter(v => v.total > 0);
+
+            const estadosRecientes = ESTADOS.map(e => ({
+              ...e,
+              count: porEstado(e.id)
+            })).filter(e => e.count > 0).sort((a,b) => b.count - a.count);
+
+            return (
+              <div>
+                <h2 style={{ fontSize: 19, fontWeight: 700, margin: "0 0 18px" }}>Dashboard de procesos</h2>
+
+                {/* Tarjetas métricas */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 18 }}>
+                  {etapas.map((e, i) => (
+                    <div key={i} style={{ background: "#fff", border: "0.5px solid #e8e8e8", borderRadius: 12, padding: "1rem 1.2rem", borderTop: `3px solid ${e.color}` }}>
+                      <div style={{ fontSize: 22, marginBottom: 6 }}>{e.icon}</div>
+                      <div style={{ fontSize: 28, fontWeight: 700, color: e.color, lineHeight: 1 }}>{e.val}</div>
+                      <div style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>{e.label}</div>
+                      {conApp.length > 0 && <div style={{ fontSize: 11, color: e.color, marginTop: 2 }}>{Math.round(e.val / conApp.length * 100)}% del total</div>}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Score IA promedio */}
+                {promedioIA !== null && (
+                  <div style={{ ...s.card, marginBottom: 14, display: "flex", alignItems: "center", gap: 20 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={s.lbl}>Compatibilidad promedio IA</div>
+                      <div style={{ fontSize: 13, color: "#666" }}>Promedio de todos los candidatos analizados</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 32, fontWeight: 700, color: promedioIA >= 70 ? "#0F6E56" : promedioIA >= 45 ? "#854F0B" : "#A32D2D" }}>{promedioIA}%</div>
+                      <div style={{ height: 6, width: 120, background: "#f0f0f0", borderRadius: 10, overflow: "hidden", marginTop: 4 }}>
+                        <div style={{ height: "100%", width: `${promedioIA}%`, background: promedioIA >= 70 ? "#0F6E56" : promedioIA >= 45 ? "#854F0B" : "#A32D2D", borderRadius: 10 }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Embudo de selección */}
+                {conApp.length > 0 && (
+                  <div style={{ ...s.card, marginBottom: 14 }}>
+                    <div style={s.lbl}>Embudo de selección</div>
+                    {[
+                      { label: "Aplicaciones recibidas", val: conApp.length, color: "#185FA5" },
+                      { label: "Preseleccionados", val: preseleccionados, color: "#0F6E56" },
+                      { label: "En entrevistas", val: entrevistados, color: "#534AB7" },
+                      { label: "Con oferta", val: ofertas, color: "#854F0B" },
+                      { label: "Contratados", val: contratados, color: "#0F6E56" },
+                    ].map((e, i) => (
+                      <div key={i} style={{ marginBottom: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                          <span style={{ fontSize: 13, color: "#555" }}>{e.label}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: e.color }}>{e.val}</span>
+                        </div>
+                        <div style={{ height: 6, background: "#f0f0f0", borderRadius: 10, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${Math.round(e.val / conApp.length * 100)}%`, background: e.color, borderRadius: 10 }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Por vacante */}
+                {porVacante.length > 0 && (
+                  <div style={{ ...s.card, marginBottom: 14 }}>
+                    <div style={s.lbl}>Candidatos por vacante</div>
+                    {porVacante.map((v, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: i < porVacante.length-1 ? "0.5px solid #f5f5f5" : "none" }}>
+                        <span style={{ fontSize: 14, color: "#333" }}>{v.titulo}</span>
+                        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                          <span style={{ fontSize: 13, color: "#185FA5", fontWeight: 600 }}>{v.total} aplicantes</span>
+                          <span style={{ fontSize: 12, color: "#0F6E56" }}>{v.presel} preseleccionados</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Estados actuales */}
+                {estadosRecientes.length > 0 && (
+                  <div style={s.card}>
+                    <div style={s.lbl}>Distribución por estado actual</div>
+                    {estadosRecientes.map((e, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: i < estadosRecientes.length-1 ? "0.5px solid #f5f5f5" : "none" }}>
+                        <span style={s.badge(e)}>{e.label}</span>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: e.color, marginLeft: "auto" }}>{e.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {total === 0 && <div style={{ ...s.card, textAlign: "center", color: "#bbb", padding: "3rem" }}>Aún no hay candidatos registrados.</div>}
+              </div>
+            );
+          })()}
 
           {aTab === "vacantes" && aVacMode === "lista" && (
             <>
@@ -647,9 +790,9 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
                 <div><h2 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>Vacantes</h2><p style={{ color: "#aaa", fontSize: 13, margin: "2px 0 0" }}>{vacs.length} registradas</p></div>
                 <button style={s.btn} onClick={() => { setNvT(""); setNvA(""); setNvC(""); setNvTipo("Tiempo completo"); setNvD(""); setNvR(""); setNvPreguntas([]); setNvErr(""); setAVacMode("nueva"); }}>+ Nueva vacante</button>
               </div>
-              {vacs.length === 0 && <div style={{ ...s.card, textAlign: "center", color: "#bbb", padding: "2.5rem" }}>No hay vacantes.</div>}
+              {vacs.length === 0 && <div style={{ ...s.card, textAlign: "center", color: "#bbb", padding: "2.5rem" }}>No hay vacantes. Crea la primera.</div>}
               {vacs.map(v => {
-                const nA = cands.filter(x => x.vacante_id === v.id).length;
+                const nA = cands.filter(x => x.vacanteId === v.id).length;
                 return (
                   <div key={v.id} style={s.card}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
@@ -663,9 +806,9 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
                         <div style={{ fontSize: 13, color: "#aaa" }}>{v.area} · {v.ciudad} · {v.tipo}</div>
                       </div>
                       <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                        <button style={s.btnG} onClick={async () => { await updateVac(v.id, { publicada: !v.publicada }); setVacs(prev => prev.map(x => x.id===v.id?{...x,publicada:!x.publicada}:x)); }}>{v.publicada?"Pausar":"Publicar"}</button>
+                        <button style={s.btnG} onClick={() => savV(vacs.map(x => x.id===v.id?{...x,publicada:!x.publicada}:x))}>{v.publicada?"Pausar":"Publicar"}</button>
                         <button style={s.btnG} onClick={() => abrirEditar(v)}>Editar</button>
-                        <button style={s.btnD} onClick={async () => { if(window.confirm("¿Eliminar vacante?")) { await deleteVac(v.id); setVacs(prev => prev.filter(x => x.id!==v.id)); } }}>Eliminar</button>
+                        <button style={s.btnD} onClick={() => savV(vacs.filter(x => x.id!==v.id))}>Eliminar</button>
                       </div>
                     </div>
                   </div>
@@ -681,15 +824,16 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
                 <h2 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>{aVacMode==="nueva"?"Nueva vacante":"Editar vacante"}</h2>
               </div>
               <div style={s.card}>
+                <p style={{ fontWeight: 600, fontSize: 14, margin: "0 0 14px", color: "#555" }}>Información del cargo</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
-                  <div><label style={s.lbl}>Título *</label><input style={s.inp} value={nvT} onChange={e=>setNvT(e.target.value)} placeholder="Ej: Analista de Recursos Humanos" /></div>
+                  <div><label style={s.lbl}>Título del cargo *</label><input style={s.inp} value={nvT} onChange={e=>setNvT(e.target.value)} placeholder="Ej: Analista de Recursos Humanos" /></div>
                   <div style={s.g2}>
                     <div><label style={s.lbl}>Área *</label><select style={s.sel} value={nvA} onChange={e=>setNvA(e.target.value)}><option value="">Seleccionar...</option>{AREAS.map(a=><option key={a}>{a}</option>)}</select></div>
                     <div><label style={s.lbl}>Ciudad *</label><input style={s.inp} value={nvC} onChange={e=>setNvC(e.target.value)} placeholder="Ej: Barranquilla" /></div>
                   </div>
-                  <div><label style={s.lbl}>Tipo</label><select style={s.sel} value={nvTipo} onChange={e=>setNvTipo(e.target.value)}>{TIPOS.map(t=><option key={t}>{t}</option>)}</select></div>
-                  <div><label style={s.lbl}>Descripción</label><textarea style={{ ...s.ta, height: 80 }} value={nvD} onChange={e=>setNvD(e.target.value)} placeholder="Responsabilidades..." /></div>
-                  <div><label style={s.lbl}>Requisitos</label><textarea style={{ ...s.ta, height: 65 }} value={nvR} onChange={e=>setNvR(e.target.value)} placeholder="Experiencia, estudios..." /></div>
+                  <div><label style={s.lbl}>Tipo de contrato</label><select style={s.sel} value={nvTipo} onChange={e=>setNvTipo(e.target.value)}>{TIPOS.map(t=><option key={t}>{t}</option>)}</select></div>
+                  <div><label style={s.lbl}>Descripción</label><textarea style={{ ...s.ta, height: 80 }} value={nvD} onChange={e=>setNvD(e.target.value)} placeholder="Responsabilidades del cargo..." /></div>
+                  <div><label style={s.lbl}>Requisitos</label><textarea style={{ ...s.ta, height: 65 }} value={nvR} onChange={e=>setNvR(e.target.value)} placeholder="Experiencia, estudios, habilidades..." /></div>
                 </div>
               </div>
               <div style={s.card}>
@@ -698,7 +842,7 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
                 {nvPreguntas.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
                     {nvPreguntas.map((p, i) => (
-                      <div key={p.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", background: "#f9f9f9", borderRadius: 8, marginBottom: 8 }}>
+                      <div key={p.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", background: "#f9f9f9", borderRadius: 8, marginBottom: 8, border: "0.5px solid #efefef" }}>
                         <span style={{ fontSize: 12, color: "#aaa", minWidth: 18, marginTop: 2 }}>{i+1}.</span>
                         <div style={{ flex: 1 }}>
                           <span style={{ fontSize: 14, color: "#333" }}>{p.pregunta}</span>
@@ -718,10 +862,14 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     <div style={s.g2}>
                       <div><label style={s.lbl}>Tipo</label><select style={s.sel} value={pTipo} onChange={e=>setPTipo(e.target.value)}>{TIPOS_P.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}</select></div>
-                      <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 2 }}><label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}><input type="checkbox" checked={pReq} onChange={e=>setPReq(e.target.checked)} /> Obligatoria</label></div>
+                      <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 2 }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                          <input type="checkbox" checked={pReq} onChange={e=>setPReq(e.target.checked)} /> Obligatoria
+                        </label>
+                      </div>
                     </div>
                     <div><label style={s.lbl}>Texto de la pregunta</label><input style={s.inp} value={pTexto} onChange={e=>setPTexto(e.target.value)} placeholder="Escribe la pregunta..." onKeyDown={e=>e.key==="Enter"&&doAgregarPregunta()} /></div>
-                    {pTipo === "multiple" && <div><label style={s.lbl}>Opciones (separadas por coma)</label><input style={s.inp} value={pOps} onChange={e=>setPOps(e.target.value)} placeholder="Opción A, Opción B, Opción C" /></div>}
+                    {pTipo === "multiple" && <div><label style={s.lbl}>Opciones (separadas por coma)</label><input style={s.inp} value={pOps} onChange={e=>setPOps(e.target.value)} placeholder="Ej: Opción A, Opción B, Opción C" /></div>}
                     {pErr && <div style={s.err}>{pErr}</div>}
                     <div><button style={s.btnSm} onClick={doAgregarPregunta}>Agregar pregunta</button></div>
                   </div>
@@ -735,47 +883,56 @@ JSON: {"porcentaje":<0-100>,"resumen":"<2-3 oraciones>","fortalezas":"<puntos a 
           {aTab === "candidatos" && (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
-                <div><h2 style={{ fontSize: 19, fontWeight: 700, margin: "0 0 2px" }}>Candidatos</h2><p style={{ color: "#aaa", fontSize: 13, margin: 0 }}>{cands.length} registrados</p></div>
+                <div>
+                  <h2 style={{ fontSize: 19, fontWeight: 700, margin: "0 0 2px" }}>Candidatos</h2>
+                  <p style={{ color: "#aaa", fontSize: 13, margin: 0 }}>{cands.length} registrados · {cands.filter(x=>x.vacanteId).length} con aplicación</p>
+                </div>
                 <select style={{ ...s.sel, width: "auto", minWidth: 200 }} value={aFiltro} onChange={e=>setAFiltro(e.target.value)}>
                   <option value="todas">Todas las vacantes</option>
                   {vacs.map(v=><option key={v.id} value={v.id}>{v.titulo}</option>)}
                 </select>
               </div>
-              {filtrados.length === 0 && <div style={{ ...s.card, textAlign: "center", color: "#bbb", padding: "2.5rem" }}>No hay candidatos.</div>}
+
+              {filtrados.length === 0 && <div style={{ ...s.card, textAlign: "center", color: "#bbb", padding: "2.5rem" }}>No hay candidatos en esta categoría.</div>}
+
               {filtrados.length > 0 && (
-                <div style={{ background: "#fff", border: "0.5px solid #e8e8e8", borderRadius: 12, overflow: "hidden" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 1.4fr 1fr 60px", padding: "10px 16px", background: "#f7f8fa", borderBottom: "0.5px solid #e8e8e8" }}>
+                <div style={{ background: "#fff", border: "0.5px solid #e8e8e8", borderRadius: 12, overflow: "hidden", marginBottom: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 1.4fr 1fr 36px", gap: 0, padding: "10px 16px", background: "#f7f8fa", borderBottom: "0.5px solid #e8e8e8" }}>
                     {["Nombre","Cédula","Vacante","Estado","IA %",""].map((h, i) => (
                       <span key={i} style={{ fontSize: 11, fontWeight: 600, color: "#aaa", letterSpacing: 0.4, textTransform: "uppercase" }}>{h}</span>
                     ))}
                   </div>
                   {filtrados.map((x, idx) => {
-                    const ea = x.historial && x.historial.length ? getE(x.historial[x.historial.length-1].estado) : null;
-                    const vac = vacs.find(v => v.id === x.vacante_id);
-                    const pct = x.analisis_ia?.porcentaje;
+                    const ea = x.historial.length ? getE(x.historial[x.historial.length-1].estado) : null;
+                    const vac = vacs.find(v => v.id === x.vacanteId);
+                    const pct = x.analisisIA?.porcentaje;
                     const pctColor = pct === undefined ? "#ccc" : pct >= 70 ? "#0F6E56" : pct >= 45 ? "#854F0B" : "#A32D2D";
                     return (
-                      <div key={x.id} onClick={() => setACandSel(x)} style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 1.4fr 1fr 60px", padding: "12px 16px", borderBottom: idx < filtrados.length-1 ? "0.5px solid #f0f0f0" : "none", cursor: "pointer", alignItems: "center", background: "#fff" }}
+                      <div key={x.id} onClick={() => setACandSel(x)} style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 1.4fr 1fr 36px", gap: 0, padding: "12px 16px", borderBottom: idx < filtrados.length-1 ? "0.5px solid #f0f0f0" : "none", cursor: "pointer", alignItems: "center", background: "#fff" }}
                         onMouseEnter={e => e.currentTarget.style.background="#f9fbff"}
-                        onMouseLeave={e => e.currentTarget.style.background="#fff"}>
+                        onMouseLeave={e => e.currentTarget.style.background="#fff"}
+                      >
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div style={s.av}>{ini(x.nombre)}</div>
                           <span style={{ fontWeight: 600, fontSize: 14 }}>{x.nombre}</span>
                         </div>
                         <span style={{ fontSize: 13, color: "#888" }}>{x.cedula}</span>
                         <div>
-                          <div style={{ fontSize: 13, fontWeight: 500, color: "#333" }}>{x.vacante_titulo || "—"}</div>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: "#333" }}>{x.vacanteTitulo || "—"}</div>
                           {vac && <div style={{ fontSize: 11, color: "#bbb" }}>{vac.area} · {vac.ciudad}</div>}
                         </div>
                         <div>{ea ? <span style={s.badge(ea)}>{ea.label}</span> : <span style={{ fontSize: 12, color: "#ccc" }}>Sin estado</span>}</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          {x.analizando ? <span style={{ fontSize: 12, color: "#bbb" }}>...</span>
-                            : pct !== undefined ? <><span style={{ fontSize: 15, fontWeight: 700, color: pctColor }}>{pct}%</span><div style={{ width: 32, height: 5, background: "#f0f0f0", borderRadius: 4, overflow: "hidden" }}><div style={{ width: `${pct}%`, height: "100%", background: pctColor, borderRadius: 4 }} /></div></>
-                            : <span style={{ fontSize: 12, color: "#ccc" }}>—</span>}
+                          {x.analizando
+                            ? <span style={{ fontSize: 12, color: "#bbb" }}>...</span>
+                            : pct !== undefined
+                              ? <><span style={{ fontSize: 15, fontWeight: 700, color: pctColor }}>{pct}%</span><div style={{ width: 32, height: 5, background: "#f0f0f0", borderRadius: 4, overflow: "hidden" }}><div style={{ width: `${pct}%`, height: "100%", background: pctColor, borderRadius: 4 }} /></div></>
+                              : <span style={{ fontSize: 12, color: "#ccc" }}>—</span>
+                          }
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ color: "#ccc", fontSize: 18 }}>›</span>
-                          <button onClick={async e => { e.stopPropagation(); if(window.confirm(`¿Eliminar a ${x.nombre}?`)) { await deleteCand(x.id); setCands(prev => prev.filter(c => c.id !== x.id)); } }} style={{ background: "transparent", border: "none", color: "#f0a0a0", fontSize: 16, cursor: "pointer", padding: "2px 4px" }}>✕</button>
+                          <button onClick={e => { e.stopPropagation(); if(window.confirm(`¿Eliminar a ${x.nombre}?`)) savC(cands.filter(c => c.id !== x.id)); }} style={{ background: "transparent", border: "none", color: "#f0a0a0", fontSize: 16, cursor: "pointer", padding: "2px 4px" }} title="Eliminar candidato">✕</button>
                         </div>
                       </div>
                     );
