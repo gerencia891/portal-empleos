@@ -102,8 +102,7 @@ export default function App() {
   const [apEst, setApEst] = useState("Universitario");
   const [apResp, setApResp] = useState({});
   const [apErr, setApErr] = useState("");
-  const [apCV, setApCV] = useState(null);
-  const [apCVNombre, setApCVNombre] = useState("");
+  const [apCV, setApCV] = useState("");
 
   // acceso
   const [accCedula, setAccCedula] = useState("");
@@ -251,7 +250,7 @@ Para multiple incluye 4-5 opciones. Para otros tipos opciones=[].`;
     const nuevo = {
       id: "c" + Date.now(), nombre: apNombre, cedula: apCedula,
       vacante_id: apVac.id, vacante_titulo: apVac.titulo,
-      datos_basicos: { telefono: apTel, email: apEmail, ciudad: apCiudad, profesion: apProf, experiencia: apExp, nivel_estudios: apEst, cv_url: cvUrl },
+      datos_basicos: { telefono: apTel, email: apEmail, ciudad: apCiudad, profesion: apProf, experiencia: apExp, nivel_estudios: apEst, cv_url: apCV || null },
       respuestas: apResp, analisis_ia: null, analizando: true,
       historial: [{ estado: "enviada", fecha: new Date().toISOString(), nota: "Aplicación recibida exitosamente." }]
     };
@@ -406,7 +405,7 @@ Para multiple incluye 4-5 opciones. Para otros tipos opciones=[].`;
                   {v.requisitos && <p style={{ fontSize:12, color:"#aaa", margin:0 }}><strong>Requisitos:</strong> {v.requisitos}</p>}
                   {v.preguntas && v.preguntas.length > 0 && <p style={{ fontSize:12, color:"#378ADD", margin:"6px 0 0" }}>📋 {v.preguntas.length} preguntas</p>}
                 </div>
-                <button style={s.btn} onClick={() => { setApVac(v); setApPaso(1);     setApNombre(""); setApCedula(""); setApTel(""); setApEmail(""); setApCiudad(""); setApProf(""); setApExp(""); setApEst("Universitario"); setApResp({}); setApErr(""); setApCV(null); setApCVNombre(""); setScr("aplicar"); }}>Aplicar</button>
+                <button style={s.btn} onClick={() => { setApVac(v); setApPaso(1);     setApNombre(""); setApCedula(""); setApTel(""); setApEmail(""); setApCiudad(""); setApProf(""); setApExp(""); setApEst("Universitario"); setApResp({}); setApErr(""); setApCV(""); setScr("aplicar"); }}>Aplicar</button>
               </div>
             </div>
           ))}
@@ -467,11 +466,9 @@ Para multiple incluye 4-5 opciones. Para otros tipos opciones=[].`;
                     </select>
                   </div>
                   <div>
-                    <label style={s.lbl}>Hoja de vida (PDF o Word)</label>
-                    <div style={{ border: apCVNombre ? "0.5px solid #0F6E56" : "0.5px dashed #ccc", borderRadius:8, padding:14, textAlign:"center", color: apCVNombre ? "#0F6E56" : "#bbb", fontSize:13, background: apCVNombre ? "#E1F5EE" : "#fff" }}>
-                      {apCVNombre ? `✓ ${apCVNombre}` : "Selecciona tu CV"}
-                    </div>
-                    <input type="file" accept=".pdf,.doc,.docx" style={{ marginTop:8, width:"100%", fontSize:13 }} onChange={e => { if(e.target.files[0]) { setApCV(e.target.files[0]); setApCVNombre(e.target.files[0].name); } }} />
+                    <label style={s.lbl}>Link de hoja de vida (Google Drive, Dropbox, etc.)</label>
+                    <input style={s.inp} value={apCV} onChange={e=>setApCV(e.target.value)} placeholder="Ej: https://drive.google.com/file/d/..." />
+                    <p style={{ fontSize:11, color:"#bbb", margin:"4px 0 0" }}>Comparte el link de tu CV desde Google Drive, Dropbox o similar</p>
                   </div>
                   {apErr && <div style={s.err}>{apErr}</div>}
                   <button style={{ ...s.btn, width:"100%" }} onClick={() => { if (!apNombre||!apCedula||!apTel||!apCiudad||!apProf||!apExp) { setApErr("Completa los campos obligatorios (*)"); return; } setApErr(""); if (preguntas.length===0) doAplicar(); else setApPaso(2); }}>{preguntas.length===0?"Enviar aplicación":"Continuar →"}</button>
