@@ -102,6 +102,8 @@ export default function App() {
   const [apEst, setApEst] = useState("Universitario");
   const [apResp, setApResp] = useState({});
   const [apErr, setApErr] = useState("");
+  const [apCV, setApCV] = useState(null);
+  const [apCVNombre, setApCVNombre] = useState("");
 
   // acceso
   const [accCedula, setAccCedula] = useState("");
@@ -224,6 +226,18 @@ Para multiple incluye 4-5 opciones. Para otros tipos opciones=[].`;
     setIaSug([]);
   };
 
+  const subirCV = async (file, cedula) => {
+    const ext = file.name.split(".").pop();
+    const path = `${cedula}_${Date.now()}.${ext}`;
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/cvs/${path}`, {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": file.type },
+      body: file
+    });
+    if (!res.ok) return null;
+    return `${SUPABASE_URL}/storage/v1/object/public/cvs/${path}`;
+  };
+
   const doAplicar = async () => {
     setApErr("");
     if (!apNombre || !apCedula || !apTel || !apCiudad || !apProf || !apExp) { setApErr("Completa todos los campos obligatorios (*)"); return; }
@@ -232,10 +246,12 @@ Para multiple incluye 4-5 opciones. Para otros tipos opciones=[].`;
     for (const p of pregs.filter(p => p.requerida)) {
       if (apResp[p.id] === undefined || apResp[p.id] === null || apResp[p.id] === "") { setApErr("Responde todas las preguntas obligatorias (*)."); return; }
     }
+    let cvUrl = null;
+    if (apCV) { cvUrl = await subirCV(apCV, apCedula); }
     const nuevo = {
       id: "c" + Date.now(), nombre: apNombre, cedula: apCedula,
       vacante_id: apVac.id, vacante_titulo: apVac.titulo,
-      datos_basicos: { telefono: apTel, email: apEmail, ciudad: apCiudad, profesion: apProf, experiencia: apExp, nivel_estudios: apEst },
+      datos_basicos: { telefono: apTel, email: apEmail, ciudad: apCiudad, profesion: apProf, experiencia: apExp, nivel_estudios: apEst, cv_url: cvUrl },
       respuestas: apResp, analisis_ia: null, analizando: true,
       historial: [{ estado: "enviada", fecha: new Date().toISOString(), nota: "Aplicación recibida exitosamente." }]
     };
@@ -390,7 +406,7 @@ Para multiple incluye 4-5 opciones. Para otros tipos opciones=[].`;
                   {v.requisitos && <p style={{ fontSize:12, color:"#aaa", margin:0 }}><strong>Requisitos:</strong> {v.requisitos}</p>}
                   {v.preguntas && v.preguntas.length > 0 && <p style={{ fontSize:12, color:"#378ADD", margin:"6px 0 0" }}>📋 {v.preguntas.length} preguntas</p>}
                 </div>
-                <button style={s.btn} onClick={() => { setApVac(v); setApPaso(1); setApNombre(""); setApCedula(""); setApTel(""); setApEmail(""); setApCiudad(""); setApProf(""); setApExp(""); setApEst("Universitario"); setApResp({}); setApErr(""); setScr("aplicar"); }}>Aplicar</button>
+                <button style={s.btn} onClick={() => { setApVac(v); setApPaso(1);     setApNombre(""); setApCedula(""); setApTel(""); setApEmail(""); setApCiudad(""); setApProf(""); setApExp(""); setApEst("Universitario"); setApResp({}); setApErr(""); setApCV(null); setApCVNombre(""); setScr("aplicar"); }}>Aplicar</button>
               </div>
             </div>
           ))}
@@ -450,7 +466,13 @@ Para multiple incluye 4-5 opciones. Para otros tipos opciones=[].`;
                       {["Bachiller","Técnico","Tecnólogo","Universitario","Posgrado","Maestría","Doctorado"].map(n=><option key={n}>{n}</option>)}
                     </select>
                   </div>
-                  <div><label style={s.lbl}>Hoja de vida</label><div style={{ border:"0.5px dashed #ccc", borderRadius:8, padding:14, textAlign:"center", color:"#bbb", fontSize:13, cursor:"pointer" }}>Haz clic para adjuntar tu CV</div></div>
+                  <div>
+                    <label style={s.lbl}>Hoja de vida (PDF o Word)</label>
+                    <label style={{ display:"block", border: apCVNombre ? "0.5px solid #0F6E56" : "0.5px dashed #ccc", borderRadius:8, padding:14, textAlign:"center", color: apCVNombre ? "#0F6E56" : "#bbb", fontSize:13, cursor:"pointer", background: apCVNombre ? "#E1F5EE" : "#fff" }}>
+                      {apCVNombre ? `✓ ${apCVNombre}` : "Haz clic para adjuntar tu CV"}
+                      <input type="file" accept=".pdf,.doc,.docx" style={{ display:"none" }} onChange={e => { if(e.target.files[0]) { setApCV(e.target.files[0]); setApCVNombre(e.target.files[0].name); } }} />
+                    </label>
+                  </div>
                   {apErr && <div style={s.err}>{apErr}</div>}
                   <button style={{ ...s.btn, width:"100%" }} onClick={() => { if (!apNombre||!apCedula||!apTel||!apCiudad||!apProf||!apExp) { setApErr("Completa los campos obligatorios (*)"); return; } setApErr(""); if (preguntas.length===0) doAplicar(); else setApPaso(2); }}>{preguntas.length===0?"Enviar aplicación":"Continuar →"}</button>
                 </div>
@@ -639,7 +661,7 @@ Para multiple incluye 4-5 opciones. Para otros tipos opciones=[].`;
                 </div>
               );
             })()}
-            {Object.keys(db).length > 0 && (
+                            {Object.keys(db).length > 0 && (
               <div style={{ ...s.card, marginBottom:12 }}>
                 <div style={s.lbl}>Datos personales</div>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px 20px" }}>
@@ -647,6 +669,13 @@ Para multiple incluye 4-5 opciones. Para otros tipos opciones=[].`;
                     <div key={k}><span style={{ fontSize:12, color:"#aaa" }}>{k}</span><p style={{ fontSize:14, margin:"2px 0 0", fontWeight:500 }}>{v}</p></div>
                   ) : null)}
                 </div>
+                {db.cv_url && (
+                  <div style={{ marginTop:14, paddingTop:12, borderTop:"0.5px solid #f0f0f0" }}>
+                    <a href={db.cv_url} target="_blank" rel="noreferrer" style={{ display:"inline-flex", alignItems:"center", gap:8, background:"#185FA5", color:"#fff", padding:"8px 18px", borderRadius:8, fontSize:13, fontWeight:500, textDecoration:"none" }}>
+                      📄 Ver hoja de vida
+                    </a>
+                  </div>
+                )}
               </div>
             )}
             {vac && vac.preguntas && vac.preguntas.length > 0 && (
