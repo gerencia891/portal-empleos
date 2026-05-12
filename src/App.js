@@ -468,10 +468,10 @@ Para multiple incluye 4-5 opciones. Para otros tipos opciones=[].`;
                   </div>
                   <div>
                     <label style={s.lbl}>Hoja de vida (PDF o Word)</label>
-                    <label style={{ display:"block", border: apCVNombre ? "0.5px solid #0F6E56" : "0.5px dashed #ccc", borderRadius:8, padding:14, textAlign:"center", color: apCVNombre ? "#0F6E56" : "#bbb", fontSize:13, cursor:"pointer", background: apCVNombre ? "#E1F5EE" : "#fff" }}>
-                      {apCVNombre ? `✓ ${apCVNombre}` : "Haz clic para adjuntar tu CV"}
-                      <input type="file" accept=".pdf,.doc,.docx" style={{ display:"none" }} onChange={e => { if(e.target.files[0]) { setApCV(e.target.files[0]); setApCVNombre(e.target.files[0].name); } }} />
-                    </label>
+                    <div style={{ border: apCVNombre ? "0.5px solid #0F6E56" : "0.5px dashed #ccc", borderRadius:8, padding:14, textAlign:"center", color: apCVNombre ? "#0F6E56" : "#bbb", fontSize:13, background: apCVNombre ? "#E1F5EE" : "#fff" }}>
+                      {apCVNombre ? `✓ ${apCVNombre}` : "Selecciona tu CV"}
+                    </div>
+                    <input type="file" accept=".pdf,.doc,.docx" style={{ marginTop:8, width:"100%", fontSize:13 }} onChange={e => { if(e.target.files[0]) { setApCV(e.target.files[0]); setApCVNombre(e.target.files[0].name); } }} />
                   </div>
                   {apErr && <div style={s.err}>{apErr}</div>}
                   <button style={{ ...s.btn, width:"100%" }} onClick={() => { if (!apNombre||!apCedula||!apTel||!apCiudad||!apProf||!apExp) { setApErr("Completa los campos obligatorios (*)"); return; } setApErr(""); if (preguntas.length===0) doAplicar(); else setApPaso(2); }}>{preguntas.length===0?"Enviar aplicación":"Continuar →"}</button>
