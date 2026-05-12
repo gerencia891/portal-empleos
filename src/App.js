@@ -355,7 +355,7 @@ export default function App() {
                 {buscando ? "Buscando..." : "Consultar mi proceso"}
               </button>
             </div>
-            <p style={{ fontSize: 11, color: "#ccc", textAlign: "center", marginTop: 16, marginBottom: 0 }}>Demo: 1234567890</p>
+
           </div>
           <div style={{ marginTop: 20, padding: "14px 18px", background: "#fffbf0", border: "1px solid #fde8c8", borderRadius: 12 }}>
             <p style={{ fontSize: 13, color: "#92400e", margin: 0, lineHeight: 1.6 }}>💡 <strong>¿Tienes dudas sobre tu proceso?</strong> Consulta aquí en cualquier momento sin necesidad de escribir por WhatsApp.</p>
