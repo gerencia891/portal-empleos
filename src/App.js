@@ -229,13 +229,13 @@ Para multiple incluye 4-5 opciones. Para otros tipos opciones=[].`;
   const subirCV = async (file, cedula) => {
     const ext = file.name.split(".").pop();
     const path = `${cedula}_${Date.now()}.${ext}`;
-    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/cvs/${path}`, {
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/CVS/${path}`, {
       method: "POST",
       headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": file.type },
       body: file
     });
     if (!res.ok) return null;
-    return `${SUPABASE_URL}/storage/v1/object/public/cvs/${path}`;
+    return `${SUPABASE_URL}/storage/v1/object/public/CVS/${path}`;
   };
 
   const doAplicar = async () => {
